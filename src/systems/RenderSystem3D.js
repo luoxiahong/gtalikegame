@@ -12,6 +12,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { World } from '../world/World.js';
 import { WorldGrid } from '../world/WorldGrid.js';
 import { RenderSync3D } from './RenderSync3D.js';
@@ -69,12 +70,59 @@ const TiltShiftShader = {
     `
 };
 
+
+
+const FilmicGradeShader = {
+    uniforms: {
+        'tDiffuse': { value: null },
+        'contrast': { value: 1.08 },
+        'saturation': { value: 1.06 },
+        'warmth': { value: 0.03 },
+        'lift': { value: 0.01 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float contrast;
+        uniform float saturation;
+        uniform float warmth;
+        uniform float lift;
+        varying vec2 vUv;
+
+        vec3 applyLutApprox(vec3 color) {
+            vec3 warmBias = vec3(warmth, warmth * 0.35, -warmth * 0.45);
+            color = color + warmBias + vec3(lift);
+
+            float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+            color = mix(vec3(luma), color, saturation);
+            color = (color - 0.5) * contrast + 0.5;
+
+            float vignette = smoothstep(1.05, 0.25, distance(vUv, vec2(0.5)));
+            color *= mix(0.95, 1.0, vignette);
+
+            return clamp(color, 0.0, 1.0);
+        }
+
+        void main() {
+            vec4 src = texture2D(tDiffuse, vUv);
+            gl_FragColor = vec4(applyLutApprox(src.rgb), src.a);
+        }
+    `
+};
 export const RenderSystem3D = {
     renderer: null,
     scene: null,
     camera: null,
     composer: null,
     tiltShiftPass: null,
+    bloomPass: null,
+    filmicGradePass: null,
     isZoomedIn: false,
 
     // 3D environment elements
@@ -141,6 +189,7 @@ export const RenderSystem3D = {
         // Device Pixel Ratio mapping for performance
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
         this.renderer.setSize(width, height, false);
         const clearColor = 0x000000;
         this.renderer.setClearColor(clearColor, 1.0);
@@ -178,6 +227,12 @@ export const RenderSystem3D = {
 
         this.tiltShiftPass = new ShaderPass(TiltShiftShader);
         this.composer.addPass(this.tiltShiftPass);
+
+        this.bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 0.22, 0.4, 0.88);
+        this.composer.addPass(this.bloomPass);
+
+        this.filmicGradePass = new ShaderPass(FilmicGradeShader);
+        this.composer.addPass(this.filmicGradePass);
 
         const outputPass = new OutputPass();
         this.composer.addPass(outputPass);
