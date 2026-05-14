@@ -19,6 +19,7 @@ vi.mock('three', async () => {
                     type: 0
                 };
                 this.toneMapping = 0;
+                this.toneMappingExposure = 1;
                 this.info = { autoReset: true };
             }
         }
@@ -75,6 +76,20 @@ vi.mock('three/addons/postprocessing/OutputPass.js', () => {
     };
 });
 
+
+vi.mock('three/addons/postprocessing/UnrealBloomPass.js', () => {
+    return {
+        UnrealBloomPass: class {
+            constructor(resolution, strength, radius, threshold) {
+                this.resolution = resolution;
+                this.strength = strength;
+                this.radius = radius;
+                this.threshold = threshold;
+            }
+        }
+    };
+});
+
 // Mockowanie World
 vi.mock('../world/World.js', () => ({
     World: {
@@ -126,6 +141,8 @@ describe('RenderSystem3D', () => {
         expect(RenderSystem3D.scene.fog.far).toBe(350);
         expect(RenderSystem3D.composer).toBeDefined();
         expect(RenderSystem3D.tiltShiftPass).toBeDefined();
+        expect(RenderSystem3D.bloomPass).toBeDefined();
+        expect(RenderSystem3D.filmicGradePass).toBeDefined();
 
         // Sprawdzenie czy poprawnie stworzyliśmy podłoża, chodniki, budynki i pasy drogowe
         expect(RenderSystem3D.groundPlane).toBeDefined();
