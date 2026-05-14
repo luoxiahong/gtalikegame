@@ -13,6 +13,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SAOPass } from 'three/addons/postprocessing/SAOPass.js';
 import { World } from '../world/World.js';
 import { WorldGrid } from '../world/WorldGrid.js';
 import { RenderSync3D } from './RenderSync3D.js';
@@ -121,6 +122,7 @@ export const RenderSystem3D = {
     camera: null,
     composer: null,
     tiltShiftPass: null,
+    saoPass: null,
     bloomPass: null,
     filmicGradePass: null,
     isZoomedIn: false,
@@ -227,6 +229,20 @@ export const RenderSystem3D = {
 
         this.tiltShiftPass = new ShaderPass(TiltShiftShader);
         this.composer.addPass(this.tiltShiftPass);
+
+        // Cheap SSAO/SAO pass for stronger contact shadows and depth perception
+        this.saoPass = new SAOPass(this.scene, this.camera, false, true);
+        this.saoPass.params.output = SAOPass.OUTPUT.Default;
+        this.saoPass.params.saoBias = 0.5;
+        this.saoPass.params.saoIntensity = 0.012;
+        this.saoPass.params.saoScale = 12;
+        this.saoPass.params.saoKernelRadius = 8;
+        this.saoPass.params.saoMinResolution = 0.0;
+        this.saoPass.params.saoBlur = true;
+        this.saoPass.params.saoBlurRadius = 4;
+        this.saoPass.params.saoBlurStdDev = 2.0;
+        this.saoPass.params.saoBlurDepthCutoff = 0.01;
+        this.composer.addPass(this.saoPass);
 
         this.bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 0.22, 0.4, 0.88);
         this.composer.addPass(this.bloomPass);

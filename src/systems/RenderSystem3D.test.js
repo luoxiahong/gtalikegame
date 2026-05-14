@@ -90,6 +90,19 @@ vi.mock('three/addons/postprocessing/UnrealBloomPass.js', () => {
     };
 });
 
+vi.mock('three/addons/postprocessing/SAOPass.js', () => {
+    return {
+        SAOPass: class {
+            static OUTPUT = { Default: 0 };
+            constructor(scene, camera) {
+                this.scene = scene;
+                this.camera = camera;
+                this.params = {};
+            }
+        }
+    };
+});
+
 // Mockowanie World
 vi.mock('../world/World.js', () => ({
     World: {
@@ -141,6 +154,7 @@ describe('RenderSystem3D', () => {
         expect(RenderSystem3D.scene.fog.far).toBe(350);
         expect(RenderSystem3D.composer).toBeDefined();
         expect(RenderSystem3D.tiltShiftPass).toBeDefined();
+        expect(RenderSystem3D.saoPass).toBeDefined();
         expect(RenderSystem3D.bloomPass).toBeDefined();
         expect(RenderSystem3D.filmicGradePass).toBeDefined();
 
